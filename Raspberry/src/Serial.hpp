@@ -30,8 +30,10 @@ class SerialController{
 		void setOutputMode(bool specialInterpolation=false);
 		void setTimeout(int timeout=10);//input in decisecondi
 		void setBaudRate(int baudRate=115200);
-	private:
+
 		int serialFile;
+	private:
+		
 		struct termios tty; //settings for serial
 };
 

@@ -39,7 +39,36 @@ int main(){
 	//i2c_controller contr;
 	
 	//SerialDevice asseX("/dev/ttyACM0");
-	SerialController asseX("/dev/ttyACM0", 115200);
+	SerialController asseX("/dev/ttyACM0", 460800);
+	int file=asseX.serialFile;
+	char buf[20];
+	char inp[20];
+	//usleep(2000000);
+	int correct=0;
+	for(int a=0; a<100000; a++){
+		sprintf(buf, "%d", a);
+		int written=write(file,buf, strlen(buf)+1);
+		usleep(6*9*2*(strlen(buf)+1));
+		int readen=read(file, inp, strlen(buf)+1);
+		usleep(6*9*2*(strlen(buf)+1));
+		
+		/*for(int a=0;a<5;a++){
+			printf("%d ", buf[a]);
+		}
+		printf("\n");*/
+		if(strcmp(buf, inp)==0){
+			correct++;
+		}else{
+			printf("%d |%s|\n", a, inp);
+			printf("written %d\n", written);
+			printf("readen %d\n", readen);
+			exit(-1);
+		}
+		
+	}
+	printf("%d/%d\n", correct, 100000);
+	
+	
 	//unsigned char test[3];
 	//asseX.writeComand(0, 2);
 	//asseX.readComand(0);
