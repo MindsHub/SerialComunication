@@ -6,6 +6,7 @@ SerialController::SerialController(char * filename, int baudRate){
 	// Check for errors
 	if (serialFile < 0) {
 		printf("Error %i from open file %s: %s\n", errno, filename, strerror(errno));
+        exit(-1);
 	}
 
 	setControlMode();
@@ -14,6 +15,11 @@ SerialController::SerialController(char * filename, int baudRate){
     setOutputMode();
     setTimeout(10);
     setBaudRate(baudRate);
+
+    if (tcsetattr(serialFile, TCSANOW, &tty) != 0) { //scrivere i dati correnti, e controllare il risultato
+        printf("Error %i from tcsetattr while opening %s: %s\n", errno, filename, strerror(errno));
+        exit(-1);
+    }
 }
 
 void SerialController::setControlMode(bool parity, bool twoStopBits, char bitsPerByte, bool flowControl){ // true/false, true/false, 5/6/7/8, true/false
