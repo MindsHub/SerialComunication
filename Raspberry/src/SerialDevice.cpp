@@ -1,55 +1,6 @@
 #include<Serial.hpp>
 
-SerialDevice::SerialDevice(char * filename){
-	serialFile = open(filename, O_RDWR);
 
-	// Check for errors
-	if (serialFile < 0) {
-		printf("Error %i from open file %s: %s\n", errno, filename, strerror(errno));
-	}
-
-	setControlMode();
-	
-}
-
-void SerialDevice::setControlMode(bool parity=false, bool twoStopBits=false, char bitsPerByte=8, bool flowControl= false){ // true/false, true/false, 5/6/7/8, true/false
-	if(parity) //abilita o disabilita il parity bit
-		tty.c_cflag |= PARENB;
-	else
-		tty.c_cflag &= ~PARENB;
-	
-	if(twoStopBits) //sceglie quanti stop bits usare, se 2 o solo 1
-		tty.c_cflag |= CSTOPB;
-	else
-		tty.c_cflag &= ~CSTOPB;
-	
-	tty.c_cflag &= ~CSIZE; // azzeramento bit prima dell'assegnamento
-	switch(bitsPerByte){
-		case 5:
-			tty.c_cflag |= CS5;
-		break;
-		case 6:
-			tty.c_cflag |= CS6;
-		break;
-		case 7:
-			tty.c_cflag |= CS7;
-		break;
-		case 8:
-			tty.c_cflag |= CS8;
-		break;
-		default:
-			printf("not a valid bits per byte value\n");
-			exit(-1);
-		break;
-	}
-
-	if(flowControl) //hardware flow control
-		tty.c_cflag |= CRTSCTS;
-	else
-		tty.c_cflag &= ~CRTSCTS;
-
-	tty.c_cflag |= CREAD | CLOCAL; //abilita lettura e ignora ctrl lines
-}
 
 bool SerialDevice::isValid(unsigned char reg, unsigned char val){
 	return (inBuffer[0]=='#')&&((unsigned char)(inBuffer[1]+inBuffer[2]+inBuffer[3])==inBuffer[4])&&(inBuffer[1]==reg)&&(inBuffer[2]==val);

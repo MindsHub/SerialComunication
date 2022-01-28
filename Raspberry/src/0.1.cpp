@@ -38,7 +38,8 @@ int main(){
 	srand(time(NULL));
 	//i2c_controller contr;
 	
-	SerialDevice asseX("/dev/ttyACM0");
+	//SerialDevice asseX("/dev/ttyACM0");
+	SerialController asseX("/dev/ttyACM0", 115200);
 	//unsigned char test[3];
 	//asseX.writeComand(0, 2);
 	//asseX.readComand(0);

@@ -21,7 +21,19 @@
 
 enum {idle, writing, toStart, executing};
 
-
+class SerialController{
+	public:
+		SerialController(char * filename, int baudRate=115200);
+		void setControlMode(bool parity=false, bool twoStopBits=false, char bitsPerByte=8, bool flowControl= false); // true/false, true/false, 5/6/7/8, true/false
+		void setLocalMode(bool canonical=false, bool echoInput=false, bool signalChars=false);
+		void setInputMode(bool sftwFlowControl=false, bool specialHandling=false);
+		void setOutputMode(bool specialInterpolation=false);
+		void setTimeout(int timeout=10);//input in decisecondi
+		void setBaudRate(int baudRate=115200);
+	private:
+		int serialFile;
+		struct termios tty; //settings for serial
+};
 
 class SerialDevice{
 	public:
@@ -30,8 +42,7 @@ class SerialDevice{
 		unsigned char delivery(unsigned char* data, unsigned char size, unsigned char **out);
 		
 	private:
-		int serialFile;
-		struct termios tty; //settings for serial
+		
 		unsigned char addr;
 		unsigned char inBuffer[1000];
 		unsigned char outBuffer[4];
@@ -39,8 +50,7 @@ class SerialDevice{
 		unsigned char readed=0; //lo so che è sbagliato, ma rende l'idea e non da problemi con la f read
 		bool inError=false;
 		
-		void setControlMode(bool parity=false, bool twoStopBits=false, char bitsPerByte=8, bool flowControl= false); // true/false, true/false, 5/6/7/8, true/false
-
+		
 
 		bool isValid(unsigned char reg, unsigned char val);
 		
