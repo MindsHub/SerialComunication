@@ -2,11 +2,11 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "i2c.hpp"
+#include "Serial.hpp"
 
 int count=0;
-
-void move(i2c_device dev, int32_t pos){
+/*
+void move(SerialDevice dev, int32_t pos){
 	printf("\rM->%5d %d\n", pos, ++count);
 	fflush(stdout);
 	unsigned char buf[5];
@@ -15,7 +15,7 @@ void move(i2c_device dev, int32_t pos){
 	dev.delivery(buf, 5);
 }
 
-void sum(i2c_device dev, int32_t x, int32_t y){
+void sum(SerialDevice dev, int32_t x, int32_t y){
 	printf("%d+%d=",x,y);
 	unsigned char buf[9];
 	unsigned char* out;
@@ -32,13 +32,13 @@ void sum(i2c_device dev, int32_t x, int32_t y){
 			exit(-1);
 		}
 	}
-}
+}*/
 
 int main(){
 	srand(time(NULL));
 	//i2c_controller contr;
 	
-	i2c_device asseX(I2C_CONTROLLER, 0x10);
+	SerialDevice asseX("/dev/ttyACM0");
 	//unsigned char test[3];
 	//asseX.writeComand(0, 2);
 	//asseX.readComand(0);
@@ -47,7 +47,7 @@ int main(){
 		move((int32_t)rand()%(200*32));
 		usleep(1000000);
 	}*/
-	move(asseX, 1000);
+	//move(asseX, 1000);
 	/*for(int a=0;a<5000;a++){
 			
 		//sum(asseX, rand()%100, rand()%100);

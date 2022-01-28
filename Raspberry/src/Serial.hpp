@@ -1,5 +1,5 @@
-#ifndef i2c_wrapper
-#define i2c_wrapper
+#ifndef SERIAL_WRAPPER
+#define SERIAL_WRAPPER
 
 #include <cstring>
 #include <cerrno>
@@ -21,26 +21,17 @@
 
 enum {idle, writing, toStart, executing};
 
-class i2c_controller{
-	public:
-		int file_i2c;
-		i2c_controller(){
-			setup();
-		}
-		void setup();
-		
-};
 
-class i2c_device{
+
+class SerialDevice{
 	public:
-		i2c_device(i2c_controller inp, unsigned char addr){
-			this->addr=addr;
-			setup(inp);
-		}
+		SerialDevice(char * filename);
 		void delivery(unsigned char* data, unsigned char size);
 		unsigned char delivery(unsigned char* data, unsigned char size, unsigned char **out);
+		
 	private:
-		int file_i2c;
+		int serialFile;
+		struct termios tty; //settings for serial
 		unsigned char addr;
 		unsigned char inBuffer[1000];
 		unsigned char outBuffer[4];
@@ -48,6 +39,9 @@ class i2c_device{
 		unsigned char readed=0; //lo so che è sbagliato, ma rende l'idea e non da problemi con la f read
 		bool inError=false;
 		
+		void setControlMode(bool parity=false, bool twoStopBits=false, char bitsPerByte=8, bool flowControl= false); // true/false, true/false, 5/6/7/8, true/false
+
+
 		bool isValid(unsigned char reg, unsigned char val);
 		
 		unsigned char readData(unsigned char reg, unsigned char val);
@@ -59,16 +53,11 @@ class i2c_device{
 		bool writeStatus(unsigned char val);
 		unsigned char readStatus();
 		
-		void setup(i2c_controller inp);
-		void setup();
 		
 };
 
 //void setup();
 void i2c_saveError(char*);
 //void i2c_delivery(unsigned char *, unsigned char);
-
-#define I2C_CONTROLLER __getI2cController()
-extern i2c_controller& __getI2cController(void);
 
 #endif

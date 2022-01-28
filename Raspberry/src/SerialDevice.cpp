@@ -1,32 +1,64 @@
-#include<i2c.hpp>
+#include<Serial.hpp>
 
-void i2c_device::setup(){
-	if (ioctl(file_i2c, I2C_SLAVE, addr) < 0) {
-		i2c_saveError((char *)"Can't find Arduino on i2c");
-		exit(-1);
-	} 
-	usleep(1000);
+SerialDevice::SerialDevice(char * filename){
+	serialFile = open(filename, O_RDWR);
+
+	// Check for errors
+	if (serialFile < 0) {
+		printf("Error %i from open file %s: %s\n", errno, filename, strerror(errno));
+	}
+
+	setControlMode();
+	
 }
-void i2c_device::setup(i2c_controller inp){
-	file_i2c=inp.file_i2c;
-	outBuffer[3]=255;
-	setup();
+
+void SerialDevice::setControlMode(bool parity=false, bool twoStopBits=false, char bitsPerByte=8, bool flowControl= false){ // true/false, true/false, 5/6/7/8, true/false
+	if(parity) //abilita o disabilita il parity bit
+		tty.c_cflag |= PARENB;
+	else
+		tty.c_cflag &= ~PARENB;
+	
+	if(twoStopBits) //sceglie quanti stop bits usare, se 2 o solo 1
+		tty.c_cflag |= CSTOPB;
+	else
+		tty.c_cflag &= ~CSTOPB;
+	
+	tty.c_cflag &= ~CSIZE; // azzeramento bit prima dell'assegnamento
+	switch(bitsPerByte){
+		case 5:
+			tty.c_cflag |= CS5;
+		break;
+		case 6:
+			tty.c_cflag |= CS6;
+		break;
+		case 7:
+			tty.c_cflag |= CS7;
+		break;
+		case 8:
+			tty.c_cflag |= CS8;
+		break;
+		default:
+			printf("not a valid bits per byte value\n");
+			exit(-1);
+		break;
+	}
+
+	if(flowControl) //hardware flow control
+		tty.c_cflag |= CRTSCTS;
+	else
+		tty.c_cflag &= ~CRTSCTS;
+
+	tty.c_cflag |= CREAD | CLOCAL; //abilita lettura e ignora ctrl lines
 }
-bool i2c_device::isValid(unsigned char reg, unsigned char val){
+
+bool SerialDevice::isValid(unsigned char reg, unsigned char val){
 	return (inBuffer[0]=='#')&&((unsigned char)(inBuffer[1]+inBuffer[2]+inBuffer[3])==inBuffer[4])&&(inBuffer[1]==reg)&&(inBuffer[2]==val);
 }
-
-unsigned char i2c_device::readData(unsigned char reg, unsigned char val){
+/*
+unsigned char SerialDevice::readData(unsigned char reg, unsigned char val){
 	
 	for(int a=0; a<TRYES; a++){
 		readed+=read(file_i2c, inBuffer+readed, 7);
-		/*if(readed<7){
-			exit(-1);
-		}*/
-		/*for(int a=0;a<7;a++){
-			printf("%d ", inBuffer[a]);
-		}
-		printf("\n");*/
 		while(!isValid(reg, val)&&readed>5){
 		  memmove(inBuffer, inBuffer+1, --readed);
 		}
@@ -34,10 +66,6 @@ unsigned char i2c_device::readData(unsigned char reg, unsigned char val){
 			
 			DEBUG_LOGGER("\tRead %d\n", inBuffer[3]);
 			unsigned char toReturn = inBuffer[3];
-			/*if(readed>5){
-				readed-=5;
-				memmove(inBuffer, inBuffer+5, readed);
-			}else{*/
 			readed=0;
 			//}
 			//printf("%d\n", a);
@@ -55,7 +83,7 @@ unsigned char i2c_device::readData(unsigned char reg, unsigned char val){
 	return 0;
 }
 
-unsigned char i2c_device::sendData(){
+unsigned char SerialDevice::sendData(){
 	while(true){
 		
 		outBuffer[2]=outBuffer[0]+ outBuffer[1];
@@ -77,7 +105,7 @@ unsigned char i2c_device::sendData(){
 	}
 }
 
-bool i2c_device::writeComand(unsigned char reg, unsigned char val){
+bool SerialDevice::writeComand(unsigned char reg, unsigned char val){
 	//printf("%d %d\n",reg, val);
 	if(reg<I2C_BUF_SIZE){
 		outBuffer[0]=reg;
@@ -91,7 +119,7 @@ bool i2c_device::writeComand(unsigned char reg, unsigned char val){
 	return false;
 }
 
-unsigned char i2c_device::readComand(unsigned char reg){
+unsigned char SerialDevice::readComand(unsigned char reg){
 	if(reg<I2C_BUF_SIZE){
 		outBuffer[0]=I2C_BUF_SIZE;
 		outBuffer[1]=reg;
@@ -100,7 +128,7 @@ unsigned char i2c_device::readComand(unsigned char reg){
 	return 0;
 }
 
-unsigned char i2c_device::readReturn(unsigned char reg){
+unsigned char SerialDevice::readReturn(unsigned char reg){
 	if(reg<I2C_BUF_SIZE){
 		outBuffer[0]=I2C_BUF_SIZE+1;
 		outBuffer[1]=reg;
@@ -109,7 +137,7 @@ unsigned char i2c_device::readReturn(unsigned char reg){
 	return 0;
 }
 
-bool i2c_device::writeStatus(unsigned char val){
+bool SerialDevice::writeStatus(unsigned char val){
 	outBuffer[0]=I2C_BUF_SIZE+2;
 	outBuffer[1]=val;
 	for(int a=0; a<10; a++){
@@ -119,13 +147,13 @@ bool i2c_device::writeStatus(unsigned char val){
 	return false;
 }
 
-unsigned char i2c_device::readStatus(){
+unsigned char SerialDevice::readStatus(){
 	outBuffer[0]=I2C_BUF_SIZE+3;
 	outBuffer[1]=0;
 	return sendData();
 }
 
-unsigned char i2c_device::delivery(unsigned char* data, unsigned char size, unsigned char **out){
+unsigned char SerialDevice::delivery(unsigned char* data, unsigned char size, unsigned char **out){
 	//printf("delivery time\n");
 	unsigned char parity=0;
 	for(int a=0; a<size; a++){
@@ -151,10 +179,6 @@ unsigned char i2c_device::delivery(unsigned char* data, unsigned char size, unsi
 			result[a+2]=readReturn(a+2);
 			parity+=result[a+2];
 		}
-		/*for(int a=0;a<result[1]+2;a++){
-			printf("%d:", result[a]);
-		}
-		printf("\n");*/
 		if(parity!=result[0]){
 			i2c_saveError((char *)"qualcosa è andato storto\n");
 			//exit(-1);
@@ -165,7 +189,8 @@ unsigned char i2c_device::delivery(unsigned char* data, unsigned char size, unsi
 	}
 }
 
-void i2c_device::delivery(unsigned char* data, unsigned char size){
+void SerialDevice::delivery(unsigned char* data, unsigned char size){
 	unsigned char *out;
 	delivery(data, size, &out);//forse è meglio fare 2 procedure completamente diverse? oppure controllo sempre di non aver beccato un errore?
 }
+*/

@@ -1,4 +1,4 @@
-#include<i2c.hpp>
+#include<Serial.hpp>
 
 
 const char *loggerFile = (const char *) "./log.txt";
@@ -28,7 +28,3 @@ void i2c_saveError(char *message) {
 
 }
 
-i2c_controller &__getI2cController(void){
-	static i2c_controller controller;
-	return controller;
-}
