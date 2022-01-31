@@ -24,6 +24,12 @@ enum {idle, writing, toStart, executing};
 class SerialController{
 	public:
 		SerialController(char * filename, int baudRate=115200);
+		SerialController();
+		~SerialController();
+		
+		void reload();
+		void setup(char * filename, int baudRate=115200);
+
 		void setControlMode(bool parity=false, bool twoStopBits=false, char bitsPerByte=8, bool flowControl= false); // true/false, true/false, 5/6/7/8, true/false
 		void setLocalMode(bool canonical=false, bool echoInput=false, bool signalChars=false);
 		void setInputMode(bool sftwFlowControl=false, bool specialHandling=false);
@@ -31,20 +37,23 @@ class SerialController{
 		void setTimeout(int timeout=10);//input in decisecondi
 		void setBaudRate(int baudRate=115200);
 
-		int serialFile;
+		int serialFile=-1;
 	private:
-		
+		char * filename=NULL;
+		int baudRate;
 		struct termios tty; //settings for serial
 };
 
 class SerialDevice{
 	public:
-		SerialDevice(char * filename);
+		SerialDevice(char * filename, int baudRate=115200);
+		void reload();
 		void delivery(unsigned char* data, unsigned char size);
 		unsigned char delivery(unsigned char* data, unsigned char size, unsigned char **out);
 		
 	private:
-		
+		SerialController serial;
+		int serialFile;
 		unsigned char addr;
 		unsigned char inBuffer[1000];
 		unsigned char outBuffer[4];

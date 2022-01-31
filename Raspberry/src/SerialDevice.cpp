@@ -1,15 +1,25 @@
 #include<Serial.hpp>
 
+SerialDevice::SerialDevice(char * filename, int baudRate){
+	serial.setup(filename, baudRate);
+	serialFile=serial.serialFile;
+}
 
+void SerialDevice::reload(){
+	printf("reload\n");
+	serial.reload();
+	serialFile=serial.serialFile;
+}
 
 bool SerialDevice::isValid(unsigned char reg, unsigned char val){
 	return (inBuffer[0]=='#')&&((unsigned char)(inBuffer[1]+inBuffer[2]+inBuffer[3])==inBuffer[4])&&(inBuffer[1]==reg)&&(inBuffer[2]==val);
 }
-/*
+
 unsigned char SerialDevice::readData(unsigned char reg, unsigned char val){
 	
 	for(int a=0; a<TRYES; a++){
-		readed+=read(file_i2c, inBuffer+readed, 7);
+		readed+=read(serialFile, inBuffer+readed, 7);
+		usleep(4000);
 		while(!isValid(reg, val)&&readed>5){
 		  memmove(inBuffer, inBuffer+1, --readed);
 		}
@@ -24,12 +34,11 @@ unsigned char SerialDevice::readData(unsigned char reg, unsigned char val){
 			return toReturn;
 
 		}
-		usleep(100);
+		usleep(4000);
 	}
 	
 	i2c_saveError((char *) "can't read from i2c device");
-	I2C_CONTROLLER.setup();
-	setup(I2C_CONTROLLER);
+	reload();
 	inError=true;
 	return 0;
 }
@@ -42,17 +51,16 @@ unsigned char SerialDevice::sendData(){
 		
 		for(int a=0; a<TRYES; a++){
 			DEBUG_LOGGER("\tSend: %d %d %d\n", outBuffer[0], outBuffer[1], outBuffer[2]);
-			if(4 == write(file_i2c, outBuffer, 4)){
-				usleep(10);
+			if(4 == write(serialFile, outBuffer, 4)){
+				usleep(4000);
 				unsigned char toReturn = readData(outBuffer[0],outBuffer[1]);
 				if(!inError)
 					return toReturn;
 			}
-			usleep(100);
+			usleep(4000);
 		}
 		i2c_saveError((char *) "can't write to i2c device");
-		I2C_CONTROLLER.setup();
-		setup(I2C_CONTROLLER);
+		reload();
 	}
 }
 
@@ -144,4 +152,3 @@ void SerialDevice::delivery(unsigned char* data, unsigned char size){
 	unsigned char *out;
 	delivery(data, size, &out);//forse è meglio fare 2 procedure completamente diverse? oppure controllo sempre di non aver beccato un errore?
 }
-*/

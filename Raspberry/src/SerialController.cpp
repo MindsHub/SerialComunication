@@ -1,7 +1,38 @@
 #include<Serial.hpp>
 
 SerialController::SerialController(char * filename, int baudRate){
-	serialFile = open(filename, O_RDWR);
+   this->filename=(char *)realloc(this->filename, strlen(filename)+1);
+   memcpy(this->filename, filename, strlen(filename)+1);
+   this->baudRate=baudRate;
+
+   if(serialFile!=-1){
+      close(serialFile);
+      serialFile=-1;
+   }
+   setup(filename, baudRate);
+}
+
+SerialController::SerialController(){
+   
+}
+
+SerialController::~SerialController(){
+   close(serialFile);
+}
+
+void SerialController::reload(){
+   printf("controller Reload\n");
+   if(serialFile!=-1){
+      close(serialFile);
+      serialFile=-1;
+   }
+   setup(filename, baudRate);
+   printf("done\n");
+}
+
+void SerialController::setup(char * filename, int baudRate){
+   printf("setup\n");
+	serialFile = open(filename, O_RDWR | O_NOCTTY);
 
 	// Check for errors
 	if (serialFile < 0) {
@@ -9,17 +40,23 @@ SerialController::SerialController(char * filename, int baudRate){
         exit(-1);
 	}
 
+   if(tcgetattr(serialFile, &tty) != 0) {
+      printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+   }
 	setControlMode();
 	setLocalMode();
 	setInputMode();
-    setOutputMode();
-    setTimeout(10);
-    setBaudRate(baudRate);
+   setOutputMode();
+   setTimeout(10);
+   setBaudRate(baudRate);
 
     if (tcsetattr(serialFile, TCSANOW, &tty) != 0) { //scrivere i dati correnti, e controllare il risultato
         printf("Error %i from tcsetattr while opening %s: %s\n", errno, filename, strerror(errno));
         exit(-1);
     }
+    usleep(5000);
+    tcflush(serialFile,TCIOFLUSH);
+    //usleep(3000000);
 }
 
 void SerialController::setControlMode(bool parity, bool twoStopBits, char bitsPerByte, bool flowControl){ // true/false, true/false, 5/6/7/8, true/false
@@ -102,6 +139,7 @@ void SerialController::setOutputMode(bool specialInterpolation){
     }else{
         tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
         tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+        //in teoria ONCLR dovrebbe essere ignorato
     }
 }
 
@@ -111,69 +149,72 @@ void SerialController::setTimeout(int timeout){//input in decisecondi
 }
 
 void SerialController::setBaudRate(int baudRate){ //non so cosa B0 faccia
+   speed_t speedFlag=B50;
     switch(baudRate){//B0,  B50,  B75,  B110,  B134,  B150,  B200, B300, B600, B1200, B1800, B2400, B4800, B9600, B19200, B38400, B57600, B115200, B230400, B460800
         case 0:
-           cfsetispeed(&tty, B0);
+            speedFlag=B0;
         break;
         case 50:
-           cfsetispeed(&tty, B50);
+           speedFlag=B50;
         break;
         case 75:
-           cfsetispeed(&tty, B75);
+           speedFlag=B75;
         break;
         case 110:
-           cfsetispeed(&tty, B110);
+           speedFlag=B110;
         break;
         case 134:
-           cfsetispeed(&tty, B134);
+           speedFlag=B134;
         break;
         case 150:
-           cfsetispeed(&tty, B150);
+           speedFlag=B150;
         break;
         case 200:
-           cfsetispeed(&tty, B200);
+           speedFlag=B200;
         break;
         case 300:
-           cfsetispeed(&tty, B300);
+           speedFlag=B300;
         break;
         case 600:
-           cfsetispeed(&tty, B600);
+           speedFlag=B600;
         break;
         case 1200:
-           cfsetispeed(&tty, B1200);
+           speedFlag=B1200;
         break;
         case 1800:
-           cfsetispeed(&tty, B1800);
+           speedFlag=B1800;
         break;
         case 2400:
-           cfsetispeed(&tty, B2400);
+           speedFlag=B2400;
         break;
         case 4800:
-           cfsetispeed(&tty, B4800);
+           speedFlag=B4800;
         break;
         case 9600:
-           cfsetispeed(&tty, B9600);
+           speedFlag=B9600;
         break;
         case 19200:
-           cfsetispeed(&tty, B19200);
+           speedFlag=B19200;
         break;
         case 38400:
-           cfsetispeed(&tty, B38400);
+           speedFlag=B38400;
         break;
         case 57600:
-           cfsetispeed(&tty, B57600);
+           speedFlag=B57600;
         break;
         case 115200:
-           cfsetispeed(&tty, B115200);
+           speedFlag=B115200;
         break;
         case 230400:
-           cfsetispeed(&tty, B230400);
+           speedFlag=B230400;
         break;
         case 460800:
-           cfsetispeed(&tty, B460800);
+           speedFlag=B460800;
         break;
         default:
             printf("not a standard baudRate\n");
             exit(-1);
     }
+    cfsetispeed(&tty, speedFlag);
+    cfsetospeed(&tty, speedFlag);
 }

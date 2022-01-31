@@ -5,7 +5,7 @@
 #include "Serial.hpp"
 
 int count=0;
-/*
+
 void move(SerialDevice dev, int32_t pos){
 	printf("\rM->%5d %d\n", pos, ++count);
 	fflush(stdout);
@@ -32,57 +32,41 @@ void sum(SerialDevice dev, int32_t x, int32_t y){
 			exit(-1);
 		}
 	}
-}*/
+}
 
-int main(){
-	srand(time(NULL));
+int main(int argc, char * argv[]){
+	//srand(time(NULL));
 	//i2c_controller contr;
-	
-	//SerialDevice asseX("/dev/ttyACM0");
-	SerialController asseX("/dev/ttyACM0", 460800);
-	int file=asseX.serialFile;
-	char buf[20];
-	char inp[20];
-	//usleep(2000000);
-	int correct=0;
-	for(int a=0; a<100000; a++){
-		sprintf(buf, "%d", a);
-		int written=write(file,buf, strlen(buf)+1);
-		usleep(6*9*2*(strlen(buf)+1));
-		int readen=read(file, inp, strlen(buf)+1);
-		usleep(6*9*2*(strlen(buf)+1));
-		
-		/*for(int a=0;a<5;a++){
-			printf("%d ", buf[a]);
-		}
-		printf("\n");*/
-		if(strcmp(buf, inp)==0){
-			correct++;
-		}else{
-			printf("%d |%s|\n", a, inp);
-			printf("written %d\n", written);
-			printf("readen %d\n", readen);
-			exit(-1);
-		}
-		
+	if(argc!=2){
+		printf("wrong parameter count\n");
 	}
-	printf("%d/%d\n", correct, 100000);
-	
-	
-	//unsigned char test[3];
-	//asseX.writeComand(0, 2);
-	//asseX.readComand(0);
-	//setup();
-	/*for(int a=0;a<10000;a++){
-		move((int32_t)rand()%(200*32));
-		usleep(1000000);
-	}*/
-	//move(asseX, 1000);
-	/*for(int a=0;a<5000;a++){
-			
-		//sum(asseX, rand()%100, rand()%100);
-		move(asseX, rand()%(200*32));
-		//usleep(10000);
-	}*/
-	//i2c_write_comand(0, 'M');
+	//SerialDevice asseX("/dev/ttyACM0", 115200);
+	SerialController test(argv[1], 115200);
+	int file=test.serialFile;
+	char out[50], inp[50];
+	memset(out, 0, 50);
+	memset(inp, 0, 50);
+	printf("starting\n");
+	time_t start = clock();
+	for(int a=0; a<100000; a++){
+		sprintf(out, "%10d", a);
+		//printf("|%s|\n",out);
+		int sent=write(file, out, strlen(out));
+		//tcflush(file,TCOFLUSH);
+		//
+		//
+		//usleep(50);
+		int val=read(file, inp, strlen(out));
+		
+		
+		
+		if(strcmp(inp, out)!=0||val!=strlen(out)){
+			printf("error on %d\n|%s|\n|%s|\n", a, inp, out);
+			printf("sent%d received %d\n",sent, val, (strlen(out)+1));
+			usleep(5000);
+			tcflush(file,TCIFLUSH);
+		}/**/
+	}
+	printf("%f", ((float)clock()-start)/CLOCKS_PER_SEC);
+	return 0;
 }
