@@ -6,34 +6,6 @@
 
 int count=0;
 
-void move(SerialDevice dev, int32_t pos){
-	printf("\rM->%5d %d\n", pos, ++count);
-	fflush(stdout);
-	unsigned char buf[5];
-	buf[0]='M';
-	memcpy(buf+1,&pos, 4);
-	dev.delivery(buf, 5);
-}
-
-void sum(SerialDevice dev, int32_t x, int32_t y){
-	printf("%d+%d=",x,y);
-	unsigned char buf[9];
-	unsigned char* out;
-	buf[0]='S';
-	memcpy(buf+1,&x, 4);
-	memcpy(buf+5,&y, 4);
-	int32_t somma=x+y;
-	unsigned char size=dev.delivery(buf, 9, &out);
-	if(size==4){
-		memcpy(&x,out, 4);
-		printf("%d %d\n",x, ++count);
-		if(somma!=x){
-			printf("erroraccio\n");
-			exit(-1);
-		}
-	}
-}
-
 int main(int argc, char * argv[]){
 	//srand(time(NULL));
 	//i2c_controller contr;
@@ -49,13 +21,13 @@ int main(int argc, char * argv[]){
 	printf("starting\n");
 	time_t start = clock();
 	for(int a=0; a<100000; a++){
-		sprintf(out, "%10d", a);
+		sprintf(out, "%d", a%10);
 		//printf("|%s|\n",out);
 		int sent=write(file, out, strlen(out));
 		//tcflush(file,TCOFLUSH);
 		//
 		//
-		//usleep(50);
+		usleep(50);
 		int val=read(file, inp, strlen(out));
 		
 		

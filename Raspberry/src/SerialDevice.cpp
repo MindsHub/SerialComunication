@@ -11,144 +11,84 @@ void SerialDevice::reload(){
 	serialFile=serial.serialFile;
 }
 
-bool SerialDevice::isValid(unsigned char reg, unsigned char val){
-	return (inBuffer[0]=='#')&&((unsigned char)(inBuffer[1]+inBuffer[2]+inBuffer[3])==inBuffer[4])&&(inBuffer[1]==reg)&&(inBuffer[2]==val);
-}
-
-unsigned char SerialDevice::readData(unsigned char reg, unsigned char val){
-	
-	for(int a=0; a<TRYES; a++){
-		readed+=read(serialFile, inBuffer+readed, 7);
-		usleep(4000);
-		while(!isValid(reg, val)&&readed>5){
-		  memmove(inBuffer, inBuffer+1, --readed);
-		}
-		if(isValid(reg, val)&&readed>=5){
-			
-			DEBUG_LOGGER("\tRead %d\n", inBuffer[3]);
-			unsigned char toReturn = inBuffer[3];
-			readed=0;
-			//}
-			//printf("%d\n", a);
-			inError=false;
-			return toReturn;
-
-		}
-		usleep(4000);
+bool SerialDevice::validHeader(byte* data){
+	if(data[0]!=17||data[6]!=19){
+		printf("invalid header start/end\n");
+		return false;
 	}
-	
-	i2c_saveError((char *) "can't read from i2c device");
-	reload();
-	inError=true;
-	return 0;
-}
-
-unsigned char SerialDevice::sendData(){
-	while(true){
-		
-		outBuffer[2]=outBuffer[0]+ outBuffer[1];
-		
-		
-		for(int a=0; a<TRYES; a++){
-			DEBUG_LOGGER("\tSend: %d %d %d\n", outBuffer[0], outBuffer[1], outBuffer[2]);
-			if(4 == write(serialFile, outBuffer, 4)){
-				usleep(4000);
-				unsigned char toReturn = readData(outBuffer[0],outBuffer[1]);
-				if(!inError)
-					return toReturn;
-			}
-			usleep(4000);
-		}
-		i2c_saveError((char *) "can't write to i2c device");
-		reload();
+	byte indexChecksum=data[1]+data[2]+data[3]+data[4];
+	if(indexChecksum!=data[5]){
+		printf("invalid header checksum\n");
+		return false;
 	}
+	return true;
 }
 
-bool SerialDevice::writeComand(unsigned char reg, unsigned char val){
-	//printf("%d %d\n",reg, val);
-	if(reg<I2C_BUF_SIZE){
-		outBuffer[0]=reg;
-		outBuffer[1]=val;
-		for(int a=0; a<10; a++){
-			if(sendData()==outBuffer[1])
-				return true;
+bool SerialDevice::validData(byte* data, byte dataSize, byte dataChecksum, byte progressiveChecksum){
+	if(data[0]!=17||data[dataSize+1]!=19){
+		printf("invalid data start/end\n");
+		return false;
+	}
+	byte checksum=0;
+	byte pChecksum=0;
+	for(int a=1; a<=dataSize; a++){
+		checksum+=data[a-1];
+		pChecksum+=a*data[a-1];
+	}
+	if(checksum!=dataChecksum||pChecksum!=progressiveChecksum){
+		printf("invalid data checksum\n");
+		return false;
+	}
+	return true;
+}
+
+void SerialDevice::send(byte cmd, byte dataSize, byte* data){//XON-int cmd-int dataSize-int data checksum - int progressive- int index checksum - XOFF
+	byte msg[7];
+	byte dataChecksum=0;
+	byte progressiveChecksum=0;
+	if(dataSize!=0){
+		for(int a=1; a<=dataSize; a++){
+			dataChecksum+=data[a-1];
+			progressiveChecksum+=a*data[a-1];
 		}
 	}
-	i2c_saveError((char *)"failed write\n");
-	return false;
-}
-
-unsigned char SerialDevice::readComand(unsigned char reg){
-	if(reg<I2C_BUF_SIZE){
-		outBuffer[0]=I2C_BUF_SIZE;
-		outBuffer[1]=reg;
-		return sendData();
-	}
-	return 0;
-}
-
-unsigned char SerialDevice::readReturn(unsigned char reg){
-	if(reg<I2C_BUF_SIZE){
-		outBuffer[0]=I2C_BUF_SIZE+1;
-		outBuffer[1]=reg;
-		return sendData();
-	}
-	return 0;
-}
-
-bool SerialDevice::writeStatus(unsigned char val){
-	outBuffer[0]=I2C_BUF_SIZE+2;
-	outBuffer[1]=val;
-	for(int a=0; a<10; a++){
-		if(sendData()==val)
-			return true;
-	}
-	return false;
-}
-
-unsigned char SerialDevice::readStatus(){
-	outBuffer[0]=I2C_BUF_SIZE+3;
-	outBuffer[1]=0;
-	return sendData();
-}
-
-unsigned char SerialDevice::delivery(unsigned char* data, unsigned char size, unsigned char **out){
-	//printf("delivery time\n");
-	unsigned char parity=0;
-	for(int a=0; a<size; a++){
-		//printf("%d %d\n",a+2, data[a]);
-		writeComand(a+2, data[a]);
-		parity+=data[a];
-	}
-	//printf("data written\n");
-	writeComand(0, parity);
-	writeComand(1, size);
 	
-	writeStatus(toStart);
-	
-	
-	while(readStatus()!=idle) usleep(10);
-	
-	while(true){//reading
-		
-		result[0] = readReturn(0);
-		result[1] = readReturn(1);
-		parity=0;
-		for(int a=0;a<result[1];a++){
-			result[a+2]=readReturn(a+2);
-			parity+=result[a+2];
-		}
-		if(parity!=result[0]){
-			i2c_saveError((char *)"qualcosa è andato storto\n");
-			//exit(-1);
-		}else{
-			*out=result+2;
-			return result[1];
-		}
-	}
+
+	msg[0] = 17;//XON
+	msg[1] = cmd;
+	msg[2] = dataSize;
+	msg[3] = dataChecksum;
+	msg[4] = progressiveChecksum;
+	byte indexChecksum = cmd+dataSize+dataChecksum+progressiveChecksum;
+	msg[5] = indexChecksum;
+	msg[6] = 19; //XOFF
+	write(serialFile, msg, 6);
+	if(dataSize>1)
+		write(serialFile, data, dataSize);
+	write(serialFile, msg+6, 1);//file end
 }
 
-void SerialDevice::delivery(unsigned char* data, unsigned char size){
-	unsigned char *out;
-	delivery(data, size, &out);//forse è meglio fare 2 procedure completamente diverse? oppure controllo sempre di non aver beccato un errore?
+void SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data checksum - int progressive- int index checksum - XOFF
+	byte msg[8];
+	byte buffer[258];
+	int nread;
+	if((nread=read(serialFile, msg, 8))!=8){
+		printf("error reading header: %d/8\n", nread);
+		exit(-1);
+	}
+	if(!validHeader(msg)){
+		printf("invalid header\n");
+		exit(-1);
+	}
+	
+	if((nread=read(serialFile, buffer, msg[2]+2))!=msg[2]+2){
+		printf("error reading data: %d/%d\n", nread, msg[2]);
+		exit(-1);
+	}
+
+	if(!validData(buffer, msg[2],msg[3], msg[4])){
+		printf("invalid data\n");
+		exit(-1);
+	}
+	memcpy(data, buffer+1, msg[2]);
 }

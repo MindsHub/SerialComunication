@@ -19,6 +19,8 @@
 #define I2C_BUF_SIZE 20
 #define TRYES 10
 
+typedef unsigned char byte;
+
 enum {idle, writing, toStart, executing};
 
 class SerialController{
@@ -48,32 +50,13 @@ class SerialDevice{
 	public:
 		SerialDevice(char * filename, int baudRate=115200);
 		void reload();
-		void delivery(unsigned char* data, unsigned char size);
-		unsigned char delivery(unsigned char* data, unsigned char size, unsigned char **out);
-		
+		void send(byte cmd, byte dataSize, byte* data);
+		void receive(byte* data);
 	private:
 		SerialController serial;
 		int serialFile;
-		unsigned char addr;
-		unsigned char inBuffer[1000];
-		unsigned char outBuffer[4];
-		unsigned char result[I2C_BUF_SIZE];
-		unsigned char readed=0; //lo so che è sbagliato, ma rende l'idea e non da problemi con la f read
-		bool inError=false;
-		
-		
-
-		bool isValid(unsigned char reg, unsigned char val);
-		
-		unsigned char readData(unsigned char reg, unsigned char val);
-		unsigned char sendData();
-		
-		bool writeComand(unsigned char reg, unsigned char val);
-		unsigned char readComand(unsigned char reg);
-		unsigned char readReturn(unsigned char reg);
-		bool writeStatus(unsigned char val);
-		unsigned char readStatus();
-		
+		bool validHeader(byte* data);
+		bool validData(byte* data, byte dataSize, byte dataChecksum, byte progressiveChecksum);
 		
 };
 
