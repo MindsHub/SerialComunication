@@ -61,7 +61,7 @@ void SerialDevice::send(byte cmd, byte dataSize, byte* data){//XON-int cmd-int d
 	msg[4] = progressiveChecksum;
 	byte indexChecksum = cmd+dataSize+dataChecksum+progressiveChecksum;
 	msg[5] = indexChecksum;
-	printf("writing: %d\n", cmd);
+	//printf("writing: %d\n", cmd);
 	write(serialFile, msg, 6);
 	
 	usleep(SERIAL_DELAY*6);
@@ -97,7 +97,9 @@ int SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data checks
 	usleep(SERIAL_DELAY*6);
 	if((nread=read(serialFile, msg, 6))!=6){
 		printf("error reading header: %d/8\n", nread);
-		exit(-1);
+		//exit(-1);
+		usleep(1000); 
+		receive(data);
 	}
 	#ifdef DEBUG_BINARY
 		for(int a=0; a<nread; a++){
@@ -131,16 +133,13 @@ int SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data checks
 			printf("invalid data\n");
 			exit(-1);
 		}
+		memcpy(data, buffer, msg[2]);
 	}/*else{
 		if((nread=read(serialFile, buffer, 1))!=1){
 			printf("error reading end: %d/%d\n", nread, msg[2]);
 			exit(-1);
 		}
 	}*/
-	
-	if(msg[2]!=0){
-		memcpy(data, buffer+1, msg[2]);
-	}
-	printf("%d\n", msg[1]);
+	//printf("%d\n", msg[1]);
 	return msg[1];
 }

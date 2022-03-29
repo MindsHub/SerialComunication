@@ -16,15 +16,22 @@ int main(int argc, char * argv[]){
 	SerialDevice test(argv[1], 115200);
 	//test.send(0, 0, NULL);
 	int correct=0;
-	byte send[] = "send";
+	byte send[4];
 	byte rec[4]; 
-	for(int a=0; a<2;a++){
-		test.send(a%256, 4, send);
+	for(int a=0; a<100000;a++){
+		send[0]=rand();
+		send[1]=rand();
+		test.send('s', 2, send);
 		usleep(200);
-		if(a%256==test.receive(rec)){
+		test.receive(rec);
+		if(rec[0]==(send[0]+send[1])%256){
 			correct++;
+		}else{
+			printf("%d+%d=%d\n", send[0], send[1], rec[0]);
+			exit(-1);
 		}
-		printf("%d/%d\n", correct, a+1);
+		//
+		printf("%d/%d\r", correct, a+1);
 	}/**/
 	
 	return 0;
