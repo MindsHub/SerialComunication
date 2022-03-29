@@ -13,7 +13,7 @@ void SerialDevice::reload(){
 
 bool SerialDevice::validHeader(byte* data){
 	if(data[0]!=17){
-		printf("invalid header start/end\n");
+		printf("invalid header start\n");
 		return false;
 	}
 	byte indexChecksum=data[1]+data[2]+data[3]+data[4];
@@ -25,15 +25,15 @@ bool SerialDevice::validHeader(byte* data){
 }
 
 bool SerialDevice::validData(byte* data, byte dataSize, byte dataChecksum, byte progressiveChecksum){
-	if(data[0]!=17||data[dataSize+1]!=19){
-		printf("invalid data start/end\n");
+	/*if(data[0]!=17){
+		printf("invalid data start\n");
 		return false;
-	}
+	}*/
 	byte checksum=0;
 	byte pChecksum=0;
-	for(int a=1; a<=dataSize; a++){
-		checksum+=data[a-1];
-		pChecksum+=a*data[a-1];
+	for(int a=0; a<dataSize; a++){
+		checksum+=data[a];
+		pChecksum+=(a+1)*data[a];
 	}
 	if(checksum!=dataChecksum||pChecksum!=progressiveChecksum){
 		printf("invalid data checksum\n");
@@ -43,13 +43,13 @@ bool SerialDevice::validData(byte* data, byte dataSize, byte dataChecksum, byte 
 }
 
 void SerialDevice::send(byte cmd, byte dataSize, byte* data){//XON-int cmd-int dataSize-int data checksum - int progressive- int index checksum - XOFF
-	byte msg[7];
+	byte msg[6];
 	byte dataChecksum=0;
 	byte progressiveChecksum=0;
 	if(dataSize>0){
-		for(int a=1; a<=dataSize; a++){
-			dataChecksum+=data[a-1];
-			progressiveChecksum+=a*data[a-1];
+		for(int a=0; a<dataSize; a++){
+			dataChecksum+=data[a];
+			progressiveChecksum+=(a+1)*data[a];
 		}
 	}
 	
@@ -61,16 +61,32 @@ void SerialDevice::send(byte cmd, byte dataSize, byte* data){//XON-int cmd-int d
 	msg[4] = progressiveChecksum;
 	byte indexChecksum = cmd+dataSize+dataChecksum+progressiveChecksum;
 	msg[5] = indexChecksum;
-	msg[6] = 19; //XOFF
 	printf("writing: %d\n", cmd);
 	write(serialFile, msg, 6);
+	
 	usleep(SERIAL_DELAY*6);
-	if(dataSize>1){
+	if(dataSize>=1){
 		write(serialFile, data, dataSize);
 		usleep(SERIAL_DELAY*dataSize);
 	}
-	write(serialFile, msg+6, 1);//file end
-	usleep(SERIAL_DELAY);
+	#ifdef DEBUG_BINARY
+		for(int a=0; a<6; a++){
+			for(int b=7; b>=0; b--){
+				printf("%d",(msg[a]>>b)%2);
+			}
+			printf(" ");
+		}
+		printf(" || ");
+		for(int a=0; a<dataSize; a++){
+			for(int b=7; b>=0; b--){
+				printf("%d",(data[a]>>b)%2);
+			}
+			printf(" ");
+		}
+		printf("\n");
+	#endif
+	//write(serialFile, msg+6, 1);//file end
+	//usleep(SERIAL_DELAY);
 	//printf("end: %d\n", cmd);
 }
 
@@ -83,16 +99,34 @@ int SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data checks
 		printf("error reading header: %d/8\n", nread);
 		exit(-1);
 	}
+	#ifdef DEBUG_BINARY
+		for(int a=0; a<nread; a++){
+			for(int b=7; b>=0; b--){
+				printf("%d",(msg[a]>>b)%2);
+			}
+			printf(" ");
+		}
+		printf(" || ");
+	#endif
 	if(!validHeader(msg)){
 		printf("invalid header\n");
 		exit(-1);
 	}
-	if(msg[2]!=0){
-		if((nread=read(serialFile, buffer, msg[2]+1))!=msg[2]+1){
+	if(msg[2]>0){
+		
+		if((nread=read(serialFile, buffer, msg[2]))!=msg[2]){
 			printf("error reading data: %d/%d\n", nread, msg[2]);
 			exit(-1);
 		}
-
+		#ifdef DEBUG_BINARY
+			for(int a=0; a<nread; a++){
+				for(int b=7; b>=0; b--){
+					printf("%d",(buffer[a]>>b)%2);
+				}
+				printf(" ");
+			}
+			printf("\n");
+		#endif
 		if(!validData(buffer, msg[2],msg[3], msg[4])){
 			printf("invalid data\n");
 			exit(-1);

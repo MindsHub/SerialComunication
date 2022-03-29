@@ -16,9 +16,12 @@ int main(int argc, char * argv[]){
 	SerialDevice test(argv[1], 115200);
 	//test.send(0, 0, NULL);
 	int correct=0;
-	for(int a=0; a<100000;a++){
-		test.send(a%256, 0, NULL);
-		if(a%256==test.receive(NULL)){
+	byte send[] = "send";
+	byte rec[4]; 
+	for(int a=0; a<2;a++){
+		test.send(a%256, 4, send);
+		usleep(200);
+		if(a%256==test.receive(rec)){
 			correct++;
 		}
 		printf("%d/%d\n", correct, a+1);
