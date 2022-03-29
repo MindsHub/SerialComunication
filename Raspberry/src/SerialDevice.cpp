@@ -12,7 +12,7 @@ void SerialDevice::reload(){
 }
 
 bool SerialDevice::validHeader(byte* data){
-	if(data[0]!=17||data[6]!=19){
+	if(data[0]!=17){
 		printf("invalid header start/end\n");
 		return false;
 	}
@@ -46,7 +46,7 @@ void SerialDevice::send(byte cmd, byte dataSize, byte* data){//XON-int cmd-int d
 	byte msg[7];
 	byte dataChecksum=0;
 	byte progressiveChecksum=0;
-	if(dataSize!=0){
+	if(dataSize>0){
 		for(int a=1; a<=dataSize; a++){
 			dataChecksum+=data[a-1];
 			progressiveChecksum+=a*data[a-1];
@@ -62,17 +62,24 @@ void SerialDevice::send(byte cmd, byte dataSize, byte* data){//XON-int cmd-int d
 	byte indexChecksum = cmd+dataSize+dataChecksum+progressiveChecksum;
 	msg[5] = indexChecksum;
 	msg[6] = 19; //XOFF
+	printf("writing: %d\n", cmd);
 	write(serialFile, msg, 6);
-	if(dataSize>1)
+	usleep(SERIAL_DELAY*6);
+	if(dataSize>1){
 		write(serialFile, data, dataSize);
+		usleep(SERIAL_DELAY*dataSize);
+	}
 	write(serialFile, msg+6, 1);//file end
+	usleep(SERIAL_DELAY);
+	//printf("end: %d\n", cmd);
 }
 
-void SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data checksum - int progressive- int index checksum - XOFF
+int SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data checksum - int progressive- int index checksum - XOFF
 	byte msg[8];
 	byte buffer[258];
 	int nread;
-	if((nread=read(serialFile, msg, 8))!=8){
+	usleep(SERIAL_DELAY*6);
+	if((nread=read(serialFile, msg, 6))!=6){
 		printf("error reading header: %d/8\n", nread);
 		exit(-1);
 	}
@@ -80,15 +87,26 @@ void SerialDevice::receive(byte* data){//XON-int cmd-int dataSize-int data check
 		printf("invalid header\n");
 		exit(-1);
 	}
-	
-	if((nread=read(serialFile, buffer, msg[2]+2))!=msg[2]+2){
-		printf("error reading data: %d/%d\n", nread, msg[2]);
-		exit(-1);
-	}
+	if(msg[2]!=0){
+		if((nread=read(serialFile, buffer, msg[2]+1))!=msg[2]+1){
+			printf("error reading data: %d/%d\n", nread, msg[2]);
+			exit(-1);
+		}
 
-	if(!validData(buffer, msg[2],msg[3], msg[4])){
-		printf("invalid data\n");
-		exit(-1);
+		if(!validData(buffer, msg[2],msg[3], msg[4])){
+			printf("invalid data\n");
+			exit(-1);
+		}
+	}/*else{
+		if((nread=read(serialFile, buffer, 1))!=1){
+			printf("error reading end: %d/%d\n", nread, msg[2]);
+			exit(-1);
+		}
+	}*/
+	
+	if(msg[2]!=0){
+		memcpy(data, buffer+1, msg[2]);
 	}
-	memcpy(data, buffer+1, msg[2]);
+	printf("%d\n", msg[1]);
+	return msg[1];
 }

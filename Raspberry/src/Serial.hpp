@@ -19,9 +19,13 @@
 #define I2C_BUF_SIZE 20
 #define TRYES 10
 
+#define SERIAL_DELAY 90
+
 typedef unsigned char byte;
 
 enum {idle, writing, toStart, executing};
+
+
 
 class SerialController{
 	public:
@@ -40,6 +44,7 @@ class SerialController{
 		void setBaudRate(int baudRate=115200);
 
 		int serialFile=-1;
+		
 	private:
 		char * filename=NULL;
 		int baudRate;
@@ -51,7 +56,7 @@ class SerialDevice{
 		SerialDevice(char * filename, int baudRate=115200);
 		void reload();
 		void send(byte cmd, byte dataSize, byte* data);
-		void receive(byte* data);
+		int receive(byte* data); ///TODO cambiare
 	private:
 		SerialController serial;
 		int serialFile;
